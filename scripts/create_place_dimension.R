@@ -1,12 +1,15 @@
 library(arrow)
 library(dplyr)
+library(jsonlite)
+library(sf)
 library(tidyverse)
+library(tigris)
 
-BASE_DIR <- "/RSTOR/restricted_data/dewey/"
-PLACES_DIR <- str_c(BASE_DIR, "core_geometry_parquet")
-SPEND_DIR <- str_c(BASE_DIR, "spend_parquet")
+constants <- read_json("./safegraph/scripts/constants.json")
+SPEND_DIR <- constants$SPEND_DIR
+PLACES_DIR <- constants$PLACES_DIR
 
-OUTPUT_DIR <- "brookefitzgerald/restricted_data/dewey/processed/dimensions/places"
+OUTPUT_DIR <- constants$PLACES_DIM_DIR
 
 
 calculate_month_difference <- function(dfm){
@@ -64,8 +67,43 @@ aggregate_by_placekey <- function(spend_facts){
     )
 }
 
+add_cbg <- function(dfm) {
+  states_g <- states() 
+  
+  us_state_list <- states_g$STUSPS[!states_g$STUSPS %in% c("GU", "VI", "MP", "PR", "AS")]
+  continental_us_state_list <- us_state_list[!us_state_list %in% c("AK", "HI")]
+  
+  places_w_geo_ids <- data.frame(placekey="", STATEFP="", COUNTYFP="", TRACTCE="", GEOID="")[FALSE,]
+  
+  for (state in us_state_list) {
+    state_block_groups <- block_groups(state=state)
+    state_places <- dfm %>% 
+      filter(region == state) %>% 
+      select(placekey, longitude, latitude) %>% 
+      collect() %>%
+      st_as_sf(coords=c("longitude","latitude")) %>%
+      st_set_crs(4326) %>%
+      st_transform(crs = st_crs(state_block_groups))
+    
+    state_places_w_geo_ids <- st_join(state_places, state_block_groups) %>%
+      select(placekey, STATEFP, COUNTYFP, TRACTCE, GEOID) %>% 
+      st_set_geometry(NULL)
+    
+    places_w_geo_ids <- bind_rows(places_w_geo_ids, state_places_w_geo_ids)
+    
+  }
+  places_w_geo_ids <- places_w_geo_ids %>% rename_with(tolower) # converts geo columns to lowercase
+  arrow_places_with_geo_ids <- arrow_table(places_w_geo_ids)
+  
+  dfm %>% left_join(arrow_places_with_geo_ids, by="placekey") %>%
+    mutate(
+      is_continental_usa = region %in% continental_us_state_list
+    )
+  }
+
 generate_place_dimension <- function(){
   places_dim  <- open_dataset(PLACES_DIR)
+  
   spend_facts <- open_dataset(SPEND_DIR) %>% 
     mutate(spent_on_date = as_date(str_sub(spend_date_range_start, 1, 10)))
   
@@ -83,7 +121,8 @@ generate_place_dimension <- function(){
       has_complete_panel   = coalesce(has_complete_panel,   FALSE),
       has_consistent_panel = coalesce(has_consistent_panel, FALSE),
     )
-
+  places_dim <- places_dim %>% add_cbg()
+  
   write_dataset(
     places_dim,
     OUTPUT_DIR,

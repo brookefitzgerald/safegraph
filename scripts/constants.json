@@ -1,0 +1,6 @@
+{
+    "PLACES_DIR":          "/RSTOR/restricted_data/dewey/core_geometry_parquet",
+    "SPEND_DIR":           "/RSTOR/restricted_data/dewey/spend_parquet",
+    "PLACES_DIM_DIR":      "/home/bfitzgerald/restricted_data/dewey/processed/dimensions/places",
+    "GROCERY_NAICS_CODES": [452311, 445110, 722511, 722513]
+}
