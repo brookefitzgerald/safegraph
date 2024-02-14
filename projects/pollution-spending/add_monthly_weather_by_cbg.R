@@ -9,9 +9,10 @@ library(lubridate)
 library(furrr)
 require(data.table, include.only = "CJ")
 
-
+## Note that county-level weather data is already processed at /RSTOR/shared_data/gridmet_share/
+# This is only necessary since the analysis is at the cbg level.
 process_raw_nc_files_from_gridmet <- function(input_directory = "/RSTOR/shared_data/gridmet/data/", 
-                                              output_directory = "/RSTOR/bfitzgerald/daily_weather_by_cbg/"){
+                                              output_directory = "/RSTOR/bfitzgerald/weather_by_cbg/daily_weather_by_cbg/"){
   
   years <- c(2019, 2020, 2021, 2022)
   measures <- c("pr", "rmax", "rmin", "tmin", "tmmn", "tmmx")
@@ -226,10 +227,11 @@ build_monthly_flexible_weather_controls_dataset_by_cbg <-function(
   write_parquet(monthly_cbg_weather, output_file)
 }
 
-process_raw_nc_files_from_gridmet(output_directory="/RSTOR/bfitzgerald/daily_weather_by_cbg/")
-monthly_weather <- build_monthly_flexible_weather_controls_dataset_by_cbg(
-  input_directory="/RSTOR/bfitzgerald/daily_weather_by_cbg/",
-  output_file="/RSTOR/bfitzgerald/flexible_monthly_weather_by_cbg.parquet")
+process_raw_nc_files_from_gridmet(output_directory="/RSTOR/bfitzgerald/weather_by_cbg/daily_weather_by_cbg/")
+build_monthly_flexible_weather_controls_dataset_by_cbg(
+  input_directory="/RSTOR/bfitzgerald/weather_by_cbg/daily_weather_by_cbg/",
+  output_file="/RSTOR/bfitzgerald/weather_by_cbg/monthly_weather_by_cbg.parquet"
+)
 
 
 
