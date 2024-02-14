@@ -1,10 +1,14 @@
+################################################################################
+# This codes downloads smoke plume data from NOAA URL and then processes it.   # 
+# Some files had to be downloaded multiple times, and some were malformed or   #
+# needed special treatment. It returns the shapefiles at the census block group#
+# level where there is any intersection (not coverage!) of the smoke plume and #
+# the CBG.                                                                     #
+################################################################################
 library(tibble)
 library(dplyr)
 library(arrow)
-library(fixest)
-library(plm, include.only = "plm")
 library(sf)
-library(ggplot2)
 library(glue)
 library(tigris)
 library(data.table, include.only = CJ)
